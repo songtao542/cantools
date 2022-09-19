@@ -228,10 +228,10 @@ class Signal(object):
             else:
                 type_name = 'double'
         else:
-            if self.length == 32:
-                type_name = 'int'
-            else:
+            if self.length == 64:
                 type_name = 'long'
+            else:
+                type_name = 'int'
         return type_name
 
     @property

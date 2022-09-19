@@ -67,6 +67,8 @@ public class {class_name} {{
     static {{
         System.loadLibrary("{database_name}");
     }}
+    
+    private {class_name}(){{}}
 
     private static boolean putIfNotEqual(int key, int value) {{
         int oldValue = sValueMap.get(key);

@@ -1,0 +1,103 @@
+import argparse
+import os
+import os.path
+
+from .. import database
+from ..database.can.java_source import generate
+from ..database.can.java_source import camel_to_snake_case
+
+
+def to_camel_case(snake_str):
+    components = snake_str.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def camel_case(snake_str):
+    components = snake_str.split('_')
+    return ''.join(x.title() for x in components[0:])
+
+
+def _do_generate_java_source(args):
+    dbase = database.load_file(args.infile,
+                               encoding=args.encoding,
+                               prune_choices=args.prune,
+                               strict=not args.no_strict)
+
+    if args.database_name is None:
+        basename = os.path.basename(args.infile)
+        database_name = os.path.splitext(basename)[0]
+        database_name = camel_to_snake_case(database_name)
+    else:
+        database_name = args.database_name
+
+    filename = camel_case(database_name)
+    filename_java = filename + '.java'
+
+    source = generate(
+        dbase,
+        database_name,
+        filename,
+        not args.no_floating_point_numbers,
+        args.bit_fields,
+        args.use_float,
+        args.node)
+
+    os.makedirs(args.output_directory, exist_ok=True)
+    
+    path_java = os.path.join(args.output_directory, filename_java)
+
+    with open(path_java, 'w') as fout:
+        fout.write(source)
+
+    print('Successfully generated {}.'.format(filename_java))
+
+
+def add_subparser(subparsers):
+    generate_java_source_parser = subparsers.add_parser(
+        'generate_java_source',
+        description='Generate Java source code from given database file.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    generate_java_source_parser.add_argument(
+        '--database-name',
+        help=('The database name.  Uses the stem of the input file name if not'
+              ' specified.'))
+    generate_java_source_parser.add_argument(
+        '--no-floating-point-numbers',
+        action='store_true',
+        default=False,
+        help='No floating point numbers in the generated code.')
+    generate_java_source_parser.add_argument(
+        '--bit-fields',
+        action='store_true',
+        help='Use bit fields to minimize struct sizes.')
+    generate_java_source_parser.add_argument(
+        '-e', '--encoding',
+        help='File encoding.')
+    generate_java_source_parser.add_argument(
+        '--prune',
+        action='store_true',
+        help='Try to shorten the names of named signal choices.')
+    generate_java_source_parser.add_argument(
+        '--no-strict',
+        action='store_true',
+        help='Skip database consistency checks.')
+    generate_java_source_parser.add_argument(
+        '-f', '--generate-fuzzer',
+        action='store_true',
+        help='Also generate fuzzer source code.')
+    generate_java_source_parser.add_argument(
+        '-o', '--output-directory',
+        default='.',
+        help='Directory in which to write output files.')
+    generate_java_source_parser.add_argument(
+        '--use-float',
+        action='store_true',
+        default=False,
+        help='Use float instead of double for floating point generation.')
+    generate_java_source_parser.add_argument(
+        'infile',
+        help='Input database file.')
+    generate_java_source_parser.add_argument(
+        '--node',
+        help='Generate pack/unpack functions only for messages sent/received by the node.')
+    generate_java_source_parser.set_defaults(func=_do_generate_java_source)
